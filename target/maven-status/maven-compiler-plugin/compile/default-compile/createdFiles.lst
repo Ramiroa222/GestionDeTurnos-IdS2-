@@ -1,0 +1,7 @@
+Controladores\ControladorBase.class
+Controladores\ControladorTurnos.class
+Controladores\GestionDeTurnos.class
+Modelos\Turno.class
+Vistas\Vista.class
+Modelos\Paciente.class
+Servicios\Conexion.class
