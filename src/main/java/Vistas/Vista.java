@@ -170,17 +170,6 @@ public class Vista {
         }
     }    
     
-    /**
-     * Detiene temporalmente la ejecución del programa, esperando a que el usuario
-     * presione la tecla Enter antes de continuar limpiando/actualizando la pantalla.
-     */
-    public void pausa() {
-        Scanner in = new Scanner(System.in);
-        
-        System.out.print("\nPresione Enter Para Continuar");
-        String continuar = in.nextLine();
-    }
-    
     public String menuPrincipal() {
         return """
                

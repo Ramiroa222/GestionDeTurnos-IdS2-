@@ -17,8 +17,10 @@ public class Turno {
      *                               CONSTRUCTORES
      * ========================================================================
      */
-    // Constructor Vacio.
-    public Turno() {}
+    // Constructor.
+    public Turno() {
+        this.paciente = new Paciente();
+    }
     
     // Constructor Completo.
     public Turno(int id, String motivo, LocalDate fecha, LocalTime horarioInicio,
