@@ -1,11 +1,26 @@
 package Vistas;
 
+// Permite manejar los días de la semana (Lunes a Domingo) para validar restricciones de atención (ej. excluir fines de semana).
 import java.time.DayOfWeek;
+
+// Representa una fecha específica (año, mes, día) sin zona horaria, utilizada para la gestión de días de turnos.
 import java.time.LocalDate;
+
+// Representa una hora, minuto y segundo exactos, utilizada para controlar los horarios de inicio y fin de cada turno.
 import java.time.LocalTime;
+
+// Permite dar formato y analizar (parsear) cadenas de texto hacia objetos de fecha y hora según un patrón personalizado (ej. dd/MM/yyyy).
 import java.time.format.DateTimeFormatter;
+
+// Clase estándar de utilidad para capturar y leer las entradas de texto y números introducidas por el usuario en la consola.
 import java.util.Scanner;
 
+/**
+ * Clase Vista:
+ * Actúa como la capa de vista (según el patrón MVC) encargada de gestionar toda la interacción
+ * visual por consola con el usuario. Proveerá tanto la validación y captura de entradas (enteros, 
+ * textos, DNI, teléfonos, fechas y horarios) como la estructuración textual de los distintos menús del sistema.
+ */
 public class Vista {
     /**
      * Solicita y lee un número entero ingresado por el usuario.
@@ -58,9 +73,9 @@ public class Vista {
      * - Tenga una longitud válida (entre 7 y 9 dígitos).
      * - Contenga únicamente números (elimina automáticamente puntos o espacios si se ingresan).
      * En caso de error, muestra un mensaje informativo y solicita nuevamente la entrada.
-     * @param in
-     * @param mensaje
-     * @return String con el DNI validado
+     * @param in Objeto Scanner para la lectura de la consola.
+     * @param mensaje Mensaje personalizado a mostrar al usuario.
+     * @return String con el DNI validado.
      */
     public String leerDni(Scanner in, String mensaje) {
         while(true){
@@ -89,9 +104,9 @@ public class Vista {
      * - Contenga únicamente caracteres válidos (números, espacios, guiones, paréntesis y el signo +).
      * - Tenga una cantidad lógica de dígitos (entre 7 y 15 dígitos en total).
      * En caso de error, muestra un mensaje informativo y solicita nuevamente la entrada.
-     * @param in
-     * @param mensaje
-     * @return String con el teléfono validado
+     * @param in Objeto Scanner para la lectura de la consola.
+     * @param mensaje Mensaje personalizado a mostrar al usuario.
+     * @return String con el teléfono validado.
      */
     public String leerTelefono(Scanner in, String mensaje) {
         while(true){
@@ -117,9 +132,9 @@ public class Vista {
     /**
      * Método auxiliar para leer una fecha con validación.
      * Valida formato dd/MM/yyyy y que sea de Lunes a Viernes.
-     * @param in
-     * @param mensaje
-     * @return 
+     * @param in Objeto Scanner para la lectura de la consola.
+     * @param mensaje Mensaje personalizado a mostrar al usuario.
+     * @return LocalDate Objeto de fecha validado de lunes a viernes.
      */
     public LocalDate leerFecha(Scanner in, String mensaje) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -146,9 +161,9 @@ public class Vista {
     /**
      * Método auxiliar para leer un horario con validación.
      * Valida formato HH:mm y rango entre 08:00 y 19:20 hs.
-     * @param in
-     * @param mensaje
-     * @return 
+     * @param in Objeto Scanner para la lectura de la consola.
+     * @param mensaje Mensaje personalizado a mostrar al usuario.
+     * @return LocalTime Objeto de hora validado dentro del rango horario permitido.
      */
     public LocalTime leerHora(Scanner in, String mensaje) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
@@ -174,22 +189,34 @@ public class Vista {
         }
     }    
     
+    /**
+     * Genera y retorna la estructura en texto formateado del menú principal de la aplicación,
+     * listando todas las opciones generales de navegación para el operador.
+     * 
+     * @return String Bloque de texto con el diseño del menú principal.
+     */
     public String menuPrincipal() {
         return """
                
-               =========================== GESTOR DE TURNOS ===========================
+               ================================ GESTOR DE TURNOS ================================
                Bienvenido Al Gestor De Turnos.
                
                Seleccione Una Opcion Para Continuar:
                [0] Salir Del Programa.
                [1] Gestionar Turnos (Contiene Registrar Y Modificar Turnos).
-               [2] Consultar Turnos (Acceder A Las Diferentes Opciones De Consulta).
+               [2] Consultar Turnos y Pacientes (Acceder A Las Diferentes Opciones De Consulta).
                [3] Cancelar Un Turno Registrado.
                [4] Generar Reporte En PDF.
-               ========================================================================
+               ==================================================================================
                """;
     }
     
+    /**
+     * Genera y retorna la estructura en texto formateado del submenú de gestión de turnos,
+     * ofreciendo las opciones para registrar o modificar turnos existentes.
+     * 
+     * @return String Bloque de texto con el diseño del menú de turnos.
+     */
     public String menuDeTurnos() {
         return """
                
@@ -202,20 +229,36 @@ public class Vista {
                """;
     }
     
+    /**
+     * Genera y retorna la estructura en texto formateado del submenú de consultas,
+     * mostrando las alternativas para revisar agendas por fecha, pendientes,
+     * turnos de pacientes, todos los turnos existentes o revisar 
+     * pacientes (todos o 1 en especifico).
+     * 
+     * @return String Bloque de texto con el diseño del menú de consultas.
+     */
     public String menuDeConsultas() {
         return """
                
                =================== CONSULTAS ===================
                Seleccione Una Opcion Para Continuar:
                [0] Volver Al Menu Principal.
-               [1] Consultar Agenda De Turnos Por Fecha.
+               [1] Consultar Agenda.
                [2] Consultar Turnos Pendientes.
                [3] Consultar Turnos De Un Paciente.
-               [4] Consultar Historial Completo De Turnos.
+               [4] Consultar Todos Turnos Existentes.
+               [5] Consultar Pacientes.
+               [6] Buscar Paciente Especifico (Por DNI).
                =================================================
                """;
     }
     
+    /**
+     * Genera y retorna la estructura en texto formateado del submenú de cancelación de turnos,
+     * presentando la opción para proceder con la baja de un turno agendado.
+     * 
+     * @return String Bloque de texto con el diseño del menú de cancelación.
+     */
     public String menuDeCancelacionDeTurnos() {
         return """
                

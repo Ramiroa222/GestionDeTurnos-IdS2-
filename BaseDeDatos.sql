@@ -417,3 +417,51 @@ DROP FUNCTION f_verificar_superposicion_turno_excluyendo;
 DROP FUNCTION f_buscar_turno_por_fecha_hora;
 DROP FUNCTION f_verificar_superposicion_turno_pasado;
 DROP FUNCTION f_verificar_superposicion_turno_pasado_excluyendo;
+
+-- =====================================================
+-- VISTAS
+-- =====================================================
+
+-- =====================================================
+-- Vista para turnos pendientes
+-- =====================================================
+CREATE OR REPLACE VIEW v_turnos_pendientes AS
+SELECT t.id, t.fecha, t.horario_inicio, t.horario_fin, t.motivo, t.estado,
+       p.id AS paciente_id, p.nombre_completo, p.dni, p.numero_de_telefono, p.obra_social
+FROM Turno t
+JOIN Paciente p ON t.paciente_id = p.id
+JOIN HistorialDeTurnosPendientes h ON t.id = h.turno_id
+WHERE t.estado = 'Pendiente';
+
+-- ===================================================================
+-- Vista para turnos por paciente (historial completo por paciente)
+-- ===================================================================
+CREATE OR REPLACE VIEW v_turnos_por_paciente AS
+SELECT t.id, t.fecha, t.horario_inicio, t.horario_fin, t.motivo, t.estado,
+       p.id AS paciente_id, p.nombre_completo, p.dni, p.numero_de_telefono, p.obra_social
+FROM Turno t
+JOIN Paciente p ON t.paciente_id = p.id;
+
+-- ============================================
+-- Vista para todos los turnos existentes
+-- ============================================
+CREATE OR REPLACE VIEW v_todos_los_turnos AS
+SELECT t.id, t.fecha, t.horario_inicio, t.horario_fin, t.motivo, t.estado,
+       p.id AS paciente_id, p.nombre_completo, p.dni, p.numero_de_telefono, p.obra_social
+FROM Turno t
+JOIN Paciente p ON t.paciente_id = p.id;
+
+-- ===============================
+-- Vista para listar pacientes
+-- ===============================
+CREATE OR REPLACE VIEW v_pacientes AS
+SELECT id, nombre_completo, dni, numero_de_telefono, obra_social
+FROM Paciente;
+
+-- ===============================
+-- PARA ELIMINAR VISTAS
+-- ===============================
+DROP  VIEW v_turnos_pendientes;
+DROP  VIEW v_turnos_por_paciente;
+DROP  VIEW v_todos_los_turnos;
+DROP  VIEW v_pacientes;

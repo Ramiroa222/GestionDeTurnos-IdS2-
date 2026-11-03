@@ -1,10 +1,13 @@
+Servicios\ReportePdfService.class
+Modelos\Turno.class
+Modelos\Paciente.class
 Controladores\ControladorPacientes.class
 Controladores\ControladorBase.class
+Controladores\ControladorConsultas.class
 Controladores\ControladorTurnos.class
 Controladores\GestionDeTurnos.class
-Modelos\Turno.class
 Servicios\ActualizadorDeTurnosService.class
 Vistas\Vista.class
 Controladores\ControladorCancelacion.class
-Modelos\Paciente.class
+Controladores\ControladorTurnos$SQLConsumer.class
 Servicios\Conexion.class
