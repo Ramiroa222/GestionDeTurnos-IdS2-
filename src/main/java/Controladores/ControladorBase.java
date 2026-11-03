@@ -1,5 +1,6 @@
 package Controladores;
 
+import Servicios.ActualizadorDeTurnosService;
 import java.util.Scanner;
 
 import Vistas.Vista;
@@ -8,14 +9,18 @@ public class ControladorBase {
     public void iniciar() {
         Scanner in = new Scanner(System.in);
         Vista V = new Vista();
+        ActualizadorDeTurnosService actualizadorService = new ActualizadorDeTurnosService();
         ControladorTurnos c1 = new ControladorTurnos();
         // ControladorConsultas c2 = new ControladorConsultas();
-        // ControladorCancelacion c3 new ControladorCancelacion();
+        ControladorCancelacion c3 = new ControladorCancelacion();
         // ReporteTurnosPDF s1 = new ReporteTurnosPDF();
         
         int opcion = -1;
         
         do{
+            // Sincroniza automáticamente los turnos pasados.
+            actualizadorService.actualizarTurnosVencidos();
+            
             opcion = V.leerEntero(in, V.menuPrincipal() + "Ingresar Opcion: ");
             
             switch(opcion){
@@ -39,14 +44,16 @@ public class ControladorBase {
                     
                 case 2:
                     //c2.iniciar();
+                    System.out.println("En desarrollo");
                     break;
                     
                 case 3:
-                    //c3.iniciar();
+                    c3.iniciar(in);
                     break;
                     
                 case 4:
                     //s1.iniciar();
+                    System.out.println("En desarrollo");
                     break;
                     
                 default:

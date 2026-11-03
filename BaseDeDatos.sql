@@ -16,9 +16,9 @@ DROP DATABASE IF EXISTS Gestion_De_Turnos_BD;
 -- =====================================================
 -- PARA ELIMINAR LAS TABLAS
 -- =====================================================
+DROP TABLE HistorialDeTurnosPendientes;
 DROP TABLE Turno;
 DROP TABLE Paciente;
-DROP TABLE HistorialDeTurnosPendientes;
 
 -- =====================================================
 -- TABLA: Paciente (1° Crear La Tabla Paciente)
@@ -55,7 +55,7 @@ CREATE TABLE HistorialDeTurnosPendientes (
 );
 
 -- =====================================================
--- CONSULTAS (PARA VERIFICAR LOS DATOS)
+-- CONSULTAS (Para verificar los datos)
 -- =====================================================
 SELECT * FROM Turno;
 SELECT * FROM Paciente;
@@ -64,7 +64,10 @@ SELECT * FROM HistorialDeTurnosPendientes;
 -- =====================================================
 -- PROCEDIMIENTOS
 -- =====================================================
--- 1. Procedimiento para registrar un nuevo paciente.
+
+-- =============================================================================
+-- PROCEDIMIENTO para registrar un nuevo paciente y devolver el id del paciente
+-- =============================================================================
 DELIMITER //
 
 CREATE PROCEDURE sp_registrar_paciente(
@@ -83,7 +86,9 @@ END //
 
 DELIMITER ;
 
--- 2. Procedimiento que registra un turno y lo asigna automáticamente al HistorialDeTurnosPendientes.
+-- ===============================================================================================
+-- PROCEDIMIENTO que registra un turno y lo asigna automáticamente al HistorialDeTurnosPendientes
+-- ===============================================================================================
 DELIMITER //
 
 CREATE PROCEDURE sp_registrar_turno(
@@ -116,39 +121,102 @@ END //
 
 DELIMITER ;
 
--- 3. Procedimiento que actualiza los datos de un paciente basándose en su ID.
+-- ===========================================================================
+-- PROCEDIMIENTO que actualiza los turnos pendientes vencidos (Que ya pasaron)
+-- ===========================================================================
 DELIMITER //
 
-CREATE PROCEDURE sp_actualizar_paciente(
-    IN p_id INT,
-    IN p_nombre_completo VARCHAR(255),
-    IN p_numero_de_telefono VARCHAR(50),
-    IN p_obra_social VARCHAR(100)
-)
+CREATE PROCEDURE sp_actualizar_turnos_vencidos()
 BEGIN
-    UPDATE Paciente 
-    SET nombre_completo = p_nombre_completo,
-        numero_de_telefono = p_numero_de_telefono,
-        obra_social = p_obra_social
-    WHERE id = p_id;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- 1. Cambiar el estado a 'Pasado' de aquellos turnos cuya fecha y hora de fin ya pasaron
+    -- y que todavía figuraban como 'Pendiente'
+    UPDATE Turno 
+    SET estado = 'Pasado'
+    WHERE estado = 'Pendiente' 
+      AND CONCAT(fecha, ' ', horario_fin) < NOW();
+
+    -- 2. Remover de la tabla HistorialDeTurnosPendientes aquellos turnos que ya no están pendientes
+    DELETE h 
+    FROM HistorialDeTurnosPendientes h
+    JOIN Turno t ON h.turno_id = t.id
+    WHERE t.estado <> 'Pendiente';
+
+    COMMIT;
 END //
 
 DELIMITER ;
 
--- 4. Buscar ID de turno por fecha y horario.
+-- ===========================================================================
+-- PROCEDIMIENTO que activa un turno a pendiente
+-- ===========================================================================
 DELIMITER //
-CREATE PROCEDURE sp_buscar_turno_por_fecha_hora(
-    IN p_fecha DATE,
-    IN p_horario_inicio TIME,
-    OUT p_turno_id INT
+
+CREATE PROCEDURE sp_activar_turno_pendiente(
+    IN p_turno_id INT
 )
 BEGIN
-    SELECT t.id INTO p_turno_id
-    FROM Turno t
-    JOIN HistorialDeTurnosPendientes h ON t.id = h.turno_id
-    WHERE t.fecha = p_fecha 
-      AND t.horario_inicio = p_horario_inicio
-    LIMIT 1;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- 1. Actualizar el estado del turno a 'Pendiente'
+    UPDATE Turno 
+    SET estado = 'Pendiente' 
+    WHERE id = p_turno_id;
+
+    -- 2. Insertarlo en el historial asegurando que no se duplique si ya existiera
+    INSERT INTO HistorialDeTurnosPendientes (turno_id)
+    SELECT p_turno_id 
+    FROM DUAL
+    WHERE NOT EXISTS (
+        SELECT 1 FROM HistorialDeTurnosPendientes WHERE turno_id = p_turno_id
+    );
+
+    COMMIT;
+END //
+
+DELIMITER ;
+
+-- ================================================================================
+-- PROCEDIMIENTO que actualiza el estado del turno a 'Cancelado' y lo retira de la
+-- tabla HistorialDeTurnosPendientes para liberar el bloque horario
+-- ================================================================================
+DELIMITER //
+
+CREATE PROCEDURE sp_cancelar_turno(
+    IN p_turno_id INT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- 1. Actualizar el estado del turno a 'Cancelado'
+    UPDATE Turno 
+    SET estado = 'Cancelado' 
+    WHERE id = p_turno_id;
+
+    -- 2. Eliminar del historial de pendientes para liberar el bloque horario
+    DELETE FROM HistorialDeTurnosPendientes 
+    WHERE turno_id = p_turno_id;
+
+    COMMIT;
 END //
 
 DELIMITER ;
@@ -158,13 +226,17 @@ DELIMITER ;
 -- =====================================================
 DROP PROCEDURE sp_registrar_paciente;
 DROP PROCEDURE sp_registrar_turno;
-DROP PROCEDURE sp_actualizar_paciente;
-DROP PROCEDURE sp_buscar_turno_por_fecha_hora;
+DROP PROCEDURE sp_actualizar_turnos_vencidos;
+DROP PROCEDURE sp_activar_turno_pendiente;
+DROP PROCEDURE sp_cancelar_turno;
 
 -- =====================================================
 -- FUNCIONES
 -- =====================================================
--- 1. Funcion que SOLO busca al paciente por DNI y devuelve su ID (o NULL si no existe).
+
+-- =====================================================================================
+-- FUNCION que SOLO busca al paciente por DNI y devuelve su ID (o NULL si no existe)
+-- =====================================================================================
 DELIMITER //
 
 CREATE FUNCTION f_buscar_paciente_por_dni(
@@ -184,7 +256,9 @@ END //
 
 DELIMITER ;
 
--- 2. Funcion para verificar si un turno se superpone con otro existente.
+-- =====================================================================================
+-- FUNCION para verificar si un turno se superpone con otro existente
+-- =====================================================================================
 DELIMITER //
 
 CREATE FUNCTION f_verificar_superposicion_turno(
@@ -203,6 +277,7 @@ BEGIN
         FROM Turno t
         JOIN HistorialDeTurnosPendientes h ON t.id = h.turno_id
         WHERE t.fecha = p_fecha
+          AND t.estado <> 'Cancelado'
           AND t.horario_inicio < p_horario_fin
           AND t.horario_fin > p_horario_inicio
     ) INTO v_existe;
@@ -212,7 +287,9 @@ END //
 
 DELIMITER ;
 
--- 3. Función de superposición excluyendo el ID actual.
+-- =====================================================================================
+-- FUNCION de superposición excluyendo el ID actual
+-- =====================================================================================
 DELIMITER //
 
 CREATE FUNCTION f_verificar_superposicion_turno_excluyendo(
@@ -232,6 +309,96 @@ BEGIN
         JOIN HistorialDeTurnosPendientes h ON t.id = h.turno_id
         WHERE t.fecha = p_fecha
           AND t.id <> p_turno_id_excluir
+          AND t.estado <> 'Cancelado'
+          AND t.horario_inicio < p_horario_fin
+          AND t.horario_fin > p_horario_inicio
+    ) INTO v_existe;
+
+    RETURN v_existe;
+END //
+
+DELIMITER ;
+
+-- =====================================================
+-- FUNCION que busca el ID de turno por fecha y horario
+-- =====================================================
+DELIMITER //
+
+CREATE FUNCTION f_buscar_turno_por_fecha_hora(
+    p_fecha DATE,
+    p_horario_inicio TIME
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_turno_id INT DEFAULT NULL;
+
+    SELECT t.id INTO v_turno_id 
+    FROM Turno t
+    WHERE t.fecha = p_fecha 
+      AND t.horario_inicio = p_horario_inicio
+    LIMIT 1;
+
+    RETURN v_turno_id;
+END //
+
+DELIMITER ;
+
+-- =====================================================================================
+-- FUNCION que a diferencia de la que valida solo pendientes esta revisa toda la tabla
+-- Turno para evitar duplicados históricos en el mismo horario
+-- =====================================================================================
+DELIMITER //
+
+CREATE FUNCTION f_verificar_superposicion_turno_pasado(
+    p_fecha DATE,
+    p_horario_inicio TIME,
+    p_horario_fin TIME
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_existe BOOLEAN DEFAULT FALSE;
+
+    -- Compara contra cualquier turno registrado en esa fecha y horario
+    SELECT EXISTS (
+        SELECT 1  
+        FROM Turno t
+        WHERE t.fecha = p_fecha
+          AND t.estado <> 'Cancelado'
+          AND t.horario_inicio < p_horario_fin
+          AND t.horario_fin > p_horario_inicio
+    ) INTO v_existe;
+
+    RETURN v_existe;
+END //
+
+DELIMITER ;
+
+-- =====================================================================================
+-- FUNCION que revisa contra cualquier turno existente, pero ignorando el ID del turno
+-- que se esta editando
+-- =====================================================================================
+DELIMITER //
+
+CREATE FUNCTION f_verificar_superposicion_turno_pasado_excluyendo(
+    p_fecha DATE,
+    p_horario_inicio TIME,
+    p_horario_fin TIME,
+    p_turno_id_excluir INT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_existe BOOLEAN DEFAULT FALSE;
+
+    -- Compara contra cualquier turno registrado excluyendo el ID actual
+    SELECT EXISTS (
+        SELECT 1  
+        FROM Turno t
+        WHERE t.fecha = p_fecha
+          AND t.id <> p_turno_id_excluir
+          AND t.estado <> 'Cancelado'
           AND t.horario_inicio < p_horario_fin
           AND t.horario_fin > p_horario_inicio
     ) INTO v_existe;
@@ -246,4 +413,7 @@ DELIMITER ;
 -- =====================================================
 DROP FUNCTION f_buscar_paciente_por_dni;
 DROP FUNCTION f_verificar_superposicion_turno;
-
+DROP FUNCTION f_verificar_superposicion_turno_excluyendo;
+DROP FUNCTION f_buscar_turno_por_fecha_hora;
+DROP FUNCTION f_verificar_superposicion_turno_pasado;
+DROP FUNCTION f_verificar_superposicion_turno_pasado_excluyendo;

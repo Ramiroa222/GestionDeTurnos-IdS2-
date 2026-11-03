@@ -63,6 +63,10 @@ public class Turno {
         return paciente;
     }
     
+    public String getEstado() {
+        return estado;
+    }
+    
     /*
      * ========================================================================
      *                                 SETTERS
@@ -90,6 +94,10 @@ public class Turno {
     
     public void setPaciente(Paciente paciente) {
         this.paciente = paciente;
+    }
+    
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
     
     @Override

@@ -2,14 +2,13 @@ package Controladores;
 
 import Modelos.Turno;
 import Vistas.Vista;
-import Servicios.Conexion;
+import Servicios.*;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -17,6 +16,8 @@ import java.util.Scanner;
 
 public class ControladorTurnos {
     private final Vista V = new Vista();
+    private final ActualizadorDeTurnosService actualizadorService = new ActualizadorDeTurnosService();
+    private final ControladorPacientes  cp = new ControladorPacientes();
     private final Conexion conexionDB = new Conexion(); // Instancia para usar el método getConnection().
     
     private Turno t = new Turno();
@@ -25,6 +26,9 @@ public class ControladorTurnos {
         int opcion = -1;
         
         do{
+            // Sincroniza automáticamente los turnos pasados.
+            actualizadorService.actualizarTurnosVencidos();
+            
             opcion = V.leerEntero(in, V.menuDeTurnos() + "Ingresar Opcion: ");
             
             switch(opcion){
@@ -66,55 +70,76 @@ public class ControladorTurnos {
         
         ingresarDatos(in);
         
-        // 1. Buscar si el paciente ya existe en la base de datos.
-        t.getPaciente().setId(buscarPacientePorDni());
+        // 1. Busca si el paciente ya existe en la base de datos.
+        t.getPaciente().setId(cp.buscarPacientePorDni(t));
         
-        // 2. Si no existe, darlo de alta mediante procedimiento.
+        // 2. Si no existe, se lo da de alta. Sino se actualiza el nombre completo, 
+        // el numero de telefono y la obra social.
         if(t.getPaciente().getId() == null){
-            t.getPaciente().setId(registrarPaciente());
+            t.getPaciente().setId(cp.registrarPaciente(t));
         }else{
-            actualizarPaciente();
+            cp.actualizarPaciente(t);
         }
         
-        // 3. Registrar el turno vinculado al ID del paciente con estado "Pendiente".
+        // 3. Registra en la base de datos el turno vinculado al ID del paciente 
+        // con estado "Pendiente".
         registrarTurnoEnBD();
     }
     
-    // Metodo Auxiliar para registrarTurno.
     private void ingresarDatos(Scanner in) {
         // Datos Del Turno.
         t.setMotivo(V.obtenerEntradaNoVacia(in, "Ingresar Motivo: "));
         
+        ingresarFechayHorarioParaRegistrar(in);
+        
+        // Datos Del Paciente.
+        t.getPaciente().setNombreCompleto(V.obtenerEntradaNoVacia(in, "\nIngresar Nombre Completo Del Paciente: "));
+        t.getPaciente().setDni(V.leerDni(in, "Ingresar DNI: "));
+        t.getPaciente().setNumeroDeTelefono(V.leerTelefono(in, "Ingresar Numero De Telefono: "));
+        t.getPaciente().setObraSocial(V.obtenerEntradaNoVacia(in, "Ingresar Obra Social: "));
+    }
+    
+    private void ingresarFechayHorarioParaRegistrar(Scanner in) {
         // Bucle para repetir fecha y horario si se superponen con otro turno.
         while(true){
             LocalDate fecha = V.leerFecha(in, "Ingresar Fecha (dd/MM/yyyy): ");
             LocalTime horarioInicio = V.leerHora(in, "Ingresar Horario de Inicio (HH:mm): ");
             LocalTime horarioFin = horarioInicio.plusMinutes(40);
             
-            if(existeSuperposicionTurno(fecha, horarioInicio, horarioFin)){
-                System.out.println("\n[AVISO] Ya existe un turno activo en ese horario o se superpone con otro.");
+            // Evaluamos si es un turno en el pasado o futuro.
+            boolean esPasado = LocalDateTime.of(fecha, horarioInicio).isBefore(LocalDateTime.now());
+            
+            // Seleccionamos la validación correspondiente de forma limpia.
+            boolean haySuperposicion = esPasado
+                ? existeSuperposicionTurnoPasado(fecha, horarioInicio, horarioFin)
+                : existeSuperposicionTurno(fecha, horarioInicio, horarioFin);
+            
+            if(haySuperposicion){
+                System.out.println("\n[AVISO] Ya existe un turno en ese horario o se superpone con otro.");
                 System.out.println("Por favor, ingrese otra fecha y horario de inicio.\n");
             }else{
                 t.setFecha(fecha);
                 t.setHorarioInicio(horarioInicio);
                 t.setHorarioFin(horarioFin);
-                break; // Horario disponible, salimos del bucle.
+                break; // Horario disponible, sale del bucle.
             }
         }
-        
-        // Datos Del Paciente.
-        t.getPaciente().setNombreCompleto(V.obtenerEntradaNoVacia(in, "Ingresar Nombre Completo Del Paciente: "));
-        t.getPaciente().setDni(V.leerDni(in, "Ingresar DNI: "));
-        t.getPaciente().setNumeroDeTelefono(V.leerTelefono(in, "Ingresar Numero De Telefono: "));
-        t.getPaciente().setObraSocial(V.obtenerEntradaNoVacia(in, "Ingresar Obra Social: "));
+    }
+    
+    private boolean existeSuperposicionTurnoPasado(LocalDate fecha, LocalTime inicio, LocalTime fin) {
+        String sql = "SELECT f_verificar_superposicion_turno_pasado(?, ?, ?)";
+        return verificarSuperposicionBD(sql, fecha, inicio, fin, " pasada");
+    }
+    
+    private boolean existeSuperposicionTurno(LocalDate fecha, LocalTime inicio, LocalTime fin) {
+        String sql = "SELECT f_verificar_superposicion_turno(?, ?, ?)";
+        return verificarSuperposicionBD(sql, fecha, inicio, fin, "");
     }
     
     /**
-     * Metodo Auxiliar para ingresarDatos.
+     * Método auxiliar privado (Principio DRY): Centraliza la lógica repetitiva de conexión y consulta JDBC.
      */
-    private boolean existeSuperposicionTurno(LocalDate fecha, LocalTime inicio, LocalTime fin) {
-        String sql = "SELECT f_verificar_superposicion_turno(?, ?, ?)";
-    
+    private boolean verificarSuperposicionBD(String sql, LocalDate fecha, LocalTime inicio, LocalTime fin, String tipo) {
         try(Connection con = conexionDB.getConnection();
             PreparedStatement pstmt = con.prepareStatement(sql)){
         
@@ -124,88 +149,16 @@ public class ControladorTurnos {
         
             try(ResultSet rs = pstmt.executeQuery()){
                 if(rs.next()){
-                    // getBoolean maneja automáticamente el 1 como true y el 0 como false.
                     return rs.getBoolean(1); 
                 }
             }
-            
-            return true; // Si por alguna razón el ResultSet viene vacío, bloqueamos por seguridad.
+            return true; // Seguridad por defecto si el ResultSet está vacío.
         }catch(SQLException e){
-            System.out.println("Error al verificar superposición: " + e.getMessage());
-            return true; // Tu lógica de seguridad original ante fallos de base de datos.
+            System.out.println("Error al verificar superposición" + tipo + ": " + e.getMessage());
+            return true; // Seguridad ante fallos de BD.
         }
     }
     
-    /**
-     * Metodo Auxiliar para registrarTurno.
-     */
-    private Integer buscarPacientePorDni() {
-        String sql = "SELECT f_buscar_paciente_por_dni(?)";
-    
-        try(Connection con = conexionDB.getConnection();
-            PreparedStatement pstmt = con.prepareStatement(sql)){
-        
-            pstmt.setString(1, t.getPaciente().getDni());
-        
-            try(ResultSet rs = pstmt.executeQuery()){
-                if(rs.next()){
-                    int id = rs.getInt(1);
-                    return rs.wasNull() ? null : id;
-                }
-            }
-            
-            return null;
-        }catch(SQLException e){
-            System.out.println("Error al buscar paciente: " + e.getMessage());
-            return null;
-        }
-    }
-    
-    /**
-     * Metodo Secundario para registrarTurno.
-     */
-    private Integer registrarPaciente() {
-        String sql = "{CALL sp_registrar_paciente(?, ?, ?, ?, ?)}";
-        
-        try(Connection con = conexionDB.getConnection();
-            CallableStatement cstmt = con.prepareCall(sql)){
-            
-            cstmt.setString(1, t.getPaciente().getNombreCompleto());
-            cstmt.setString(2, t.getPaciente().getDni());
-            cstmt.setString(3, t.getPaciente().getNumeroDeTelefono());
-            cstmt.setString(4, t.getPaciente().getObraSocial());
-            cstmt.registerOutParameter(5, Types.INTEGER); // Parámetro OUT p_nuevo_id.
-            
-            cstmt.executeUpdate();
-            
-            return cstmt.getInt(5); // Retorna el ID generado.
-            
-        }catch(SQLException e){
-            System.out.println("Error al registrar paciente: " + e.getMessage());
-            return null;
-        }
-    }
-    
-    // Metodo Auxiliar para registrarTurno.
-    private void actualizarPaciente() {
-        String sql = "{CALL sp_actualizar_paciente(?, ?, ?, ?)}";
-        
-        try(Connection con = conexionDB.getConnection();
-            CallableStatement cstmt = con.prepareCall(sql)){
-            
-            cstmt.setInt(1, t.getPaciente().getId());
-            cstmt.setString(2, t.getPaciente().getNombreCompleto());
-            cstmt.setString(3, t.getPaciente().getNumeroDeTelefono());
-            cstmt.setString(4, t.getPaciente().getObraSocial());
-            
-            cstmt.executeUpdate();
-            
-        }catch(SQLException e){
-            System.out.println("Error al actualizar los datos del paciente: " + e.getMessage());
-        }
-    }
-    
-    // Metodo Auxiliar para registrarTurno.
     private void registrarTurnoEnBD() {
         String sql = "{CALL sp_registrar_turno(?, ?, ?, ?, ?)}";
         
@@ -219,7 +172,7 @@ public class ControladorTurnos {
             cstmt.setInt(5, t.getPaciente().getId());
 
             cstmt.executeUpdate();
-            System.out.println("¡Operación exitosa! Turno agendado correctamente.\n");
+            System.out.println("Operacion exitosa. Turno agendado correctamente.\n");
 
         }catch(SQLException e){
             System.out.println("Error al registrar el turno en la base de datos: " + e.getMessage());
@@ -234,80 +187,97 @@ public class ControladorTurnos {
     private void modificarTurno(Scanner in) {
         System.out.println("\n--- MODIFICAR TURNO ---");
         
-        // 1. Solicitar fecha y hora para identificar el turno a modificar.
-        LocalDate fechaBusqueda;
-        LocalTime horaBusqueda;
+        // 1. Solicita fecha y hora para identificar el turno a modificar.
+        LocalDate fechaBusqueda = V.leerFecha(in, "Ingrese la fecha del turno a modificar (dd/MM/yyyy): ");
+        LocalTime horaBusqueda = V.leerHora(in, "Ingrese el horario de inicio del turno (HH:mm): ");
         
-        // Bucle para validar que la fecha y hora no sean anteriores a la actual
-        while(true){
-            fechaBusqueda = V.leerFecha(in, "Ingrese la fecha actual del turno a modificar (dd/MM/yyyy): ");
-            horaBusqueda = V.leerHora(in, "Ingrese el horario de inicio actual del turno (HH:mm): ");
-            
-            LocalDateTime turnoDateTime = LocalDateTime.of(fechaBusqueda, horaBusqueda);
-            
-            if (turnoDateTime.isBefore(LocalDateTime.now())) {
-                System.out.println("\n[ERROR] La fecha y horario ingresados son anteriores al momento actual.");
-                System.out.println("Por favor, ingrese una fecha y horario válidos (futuros).\n");
-            } else {
-                break; // Fecha y hora válidas, salimos del bucle.
-            }
-        }
-        
-        // Buscar el ID del turno en la base de datos
+        // Buscar el ID del turno en la base de datos.
         Integer turnoId = buscarTurnoPorFechaYHora(fechaBusqueda, horaBusqueda);
         
         if (turnoId == null) {
-            System.out.println("No se encontró ningún turno pendiente con esa fecha y horario.\n");
+            System.out.println("No se encontro ningun turno pendiente con esa fecha y horario.\n");
             return;
         }
         
-        System.out.println("¡Turno encontrado con éxito!\n");
+        System.out.println("Turno encontrado con exito\n");
         
-        // 2. Preguntar interactivamente por la modificación del Motivo.
-        while(true){
-            String respuestaMotivo = V.obtenerEntradaNoVacia(in, "¿Quiere Modificar el Motivo del Turno? (Si/No): ");
-            
-            if("Si".equalsIgnoreCase(respuestaMotivo)){
-                String nuevoMotivo = V.obtenerEntradaNoVacia(in, "Ingresar Nuevo Motivo: ");
-                modificarMotivoEnBD(turnoId, nuevoMotivo);
-                break;
-            }else if("No".equalsIgnoreCase(respuestaMotivo)){
-                break;
-            }else{
-                System.out.println("Entrada Inválida. Ingrese Si o No.");
-            }
+        // 2. Modificación del Motivo (interactiva).
+        if (confirmarAccion(in, "Desea Modificar el Motivo del Turno?")) {
+            String nuevoMotivo = V.obtenerEntradaNoVacia(in, "Ingresar Nuevo Motivo: ");
+            actualizarAtributoTurnoEnBD("motivo", nuevoMotivo, turnoId);
         }
         
-        // 3. Preguntar interactivamente por la modificación de Fecha y Horario
-        while(true){
-            String respuestaFechaHora = V.obtenerEntradaNoVacia(in, "¿Quiere Modificar la Fecha y Horario del Turno? (Si/No): ");
+        // 3. Modificación de Fecha y Horario (interactiva).
+        if (confirmarAccion(in, "Desea Modificar la Fecha y Horario del Turno?")) {
+            boolean esPasado = LocalDateTime.of(fechaBusqueda, horaBusqueda).isBefore(LocalDateTime.now());
             
-            if("Si".equalsIgnoreCase(respuestaFechaHora)){
-                LocalDate nuevaFecha;
-                LocalTime nuevoHorarioInicio;
-                LocalTime nuevoHorarioFin;
+            ingresarFechaYHorarioParaModificacion(in, turnoId, esPasado);
+            actualizarFechaYHoraEnBD(turnoId);
+        }
+    }
+    
+    /**
+     * Bucle encapsulado para ingresar fecha y hora válidas sin superposiciones (excluyendo el turno actual).
+     */
+    private void ingresarFechaYHorarioParaModificacion(Scanner in, int turnoId, boolean eraPasado) {
+        while(true){
+            LocalDate fecha = V.leerFecha(in, "Ingresar Nueva Fecha (dd/MM/yyyy): ");
+            LocalTime horarioInicio = V.leerHora(in, "Ingresar Nuevo Horario de Inicio (HH:mm): ");
+            LocalTime horarioFin = horarioInicio.plusMinutes(40);
+            
+            boolean esPasadoActual = LocalDateTime.of(fecha, horarioInicio).isBefore(LocalDateTime.now());
+            
+            // Selecciona la función SQL adecuada dinámicamente
+            String sql = esPasadoActual 
+                ? "SELECT f_verificar_superposicion_turno_pasado_excluyendo(?, ?, ?, ?)"
+                : "SELECT f_verificar_superposicion_turno_excluyendo(?, ?, ?, ?)";
                 
-                // Bucle de validación de superposición (excluyendo el turno actual)
-                while(true){
-                    nuevaFecha = V.leerFecha(in, "Ingresar Nueva Fecha (dd/MM/yyyy): ");
-                    nuevoHorarioInicio = V.leerHora(in, "Ingresar Nuevo Horario de Inicio (HH:mm): ");
-                    nuevoHorarioFin = nuevoHorarioInicio.plusMinutes(40);
-                    
-                    if(existeSuperposicionTurnoExcluyendo(nuevaFecha, nuevoHorarioInicio, nuevoHorarioFin, turnoId)){
-                        System.out.println("\n[AVISO] El nuevo horario se superpone con otro turno existente.");
-                        System.out.println("Por favor, ingrese otra fecha y horario.\n");
-                    }else{
-                        break;
-                    }
+            boolean haySuperposicion = verificarSuperposicionExcluyendoBD(sql, fecha, horarioInicio, horarioFin, turnoId);
+            
+            if(haySuperposicion){
+                System.out.println("\n[AVISO] Ya existe un turno en ese horario o se superpone con otro.");
+                System.out.println("Por favor, ingrese otra fecha y horario de inicio.\n");
+            }else{
+                // Si el turno era pasado y ahora se programa a futuro, lo reactivamos en el historial
+                if(eraPasado && !esPasadoActual){
+                    actualizarHistorialDeTurnosPendientes(turnoId);
                 }
                 
-                modificarFechaYHoraEnBD(turnoId, nuevaFecha, nuevoHorarioInicio, nuevoHorarioFin);
-                break;
-            }else if("No".equalsIgnoreCase(respuestaFechaHora)){
-                break;
-            }else{
-                System.out.println("Entrada Inválida. Ingrese Si o No.");
+                t.setFecha(fecha);
+                t.setHorarioInicio(horarioInicio);
+                t.setHorarioFin(horarioFin);
+                break; 
             }
+        }
+    }
+    
+    /**
+     * Reincorpora un turno modificado (que pasó de pasado a futuro) al historial de pendientes
+     * y actualiza su estado en la base de datos.
+     */
+    private void actualizarHistorialDeTurnosPendientes(int turnoId) {
+        String sql = "{CALL sp_activar_turno_pendiente(?)}";
+        
+        try(Connection con = conexionDB.getConnection();
+            CallableStatement cstmt = con.prepareCall(sql)){
+            
+            cstmt.setInt(1, turnoId);
+            cstmt.executeUpdate();
+            
+        }catch(SQLException e){
+            System.out.println("Error al actualizar el historial de turnos pendientes: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Método auxiliar de apoyo para preguntas de Sí/No (Evita repetir bucles de validación de texto).
+     */
+    private boolean confirmarAccion(Scanner in, String mensaje) {
+        while(true){
+            String respuesta = V.obtenerEntradaNoVacia(in, mensaje + " (Si/No): ");
+            if("Si".equalsIgnoreCase(respuesta)) return true;
+            if("No".equalsIgnoreCase(respuesta)) return false;
+            System.out.println("Entrada Invalida. Ingrese Si o No.");
         }
     }
     
@@ -315,89 +285,89 @@ public class ControladorTurnos {
      * Busca el ID de un turno pendiente utilizando su fecha y horario de inicio.
      */
     private Integer buscarTurnoPorFechaYHora(LocalDate fecha, LocalTime hora) {
-        String sql = "{CALL sp_buscar_turno_por_fecha_hora(?, ?, ?)}";
+        String sql = "SELECT f_buscar_turno_por_fecha_hora(?, ?)";
         
-        try (Connection con = conexionDB.getConnection();
-             CallableStatement cstmt = con.prepareCall(sql)) {
+        try(Connection con = conexionDB.getConnection();
+            PreparedStatement pstmt = con.prepareStatement(sql)){
             
-            cstmt.setObject(1, fecha);
-            cstmt.setObject(2, hora);
-            cstmt.registerOutParameter(3, Types.INTEGER);
+            pstmt.setObject(1, fecha);
+            pstmt.setObject(2, hora);
             
-            cstmt.execute();
+            try(ResultSet rs = pstmt.executeQuery()){
+                if(rs.next()){
+                    int id = rs.getInt(1);
+                    return rs.wasNull() ? null : id;
+                }
+            }
             
-            int id = cstmt.getInt(3);
-            return cstmt.wasNull() ? null : id;
-            
-        } catch (SQLException e) {
+            return null;
+        }catch (SQLException e){
             System.out.println("Error al buscar el turno: " + e.getMessage());
             return null;
         }
     }
     
     /**
-     * Actualiza únicamente el motivo del turno en la base de datos.
+     * Método genérico para actualizar campos simples tipo String (como el motivo).
      */
-    private void modificarMotivoEnBD(int turnoId, String nuevoMotivo) {
-        String sql = "UPDATE Turno SET motivo = ? WHERE id = ?";
+    private void actualizarAtributoTurnoEnBD(String columna, String valor, int turnoId) {
+        String sql = "UPDATE Turno SET " + columna + " = ? WHERE id = ?";
         
-        try (Connection con = conexionDB.getConnection();
-             PreparedStatement pstmt = con.prepareStatement(sql)) {
+        try(Connection con = conexionDB.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)){
             
-            pstmt.setString(1, nuevoMotivo);
+            pstmt.setString(1, valor);
             pstmt.setInt(2, turnoId);
             
             pstmt.executeUpdate();
-            System.out.println("¡Motivo actualizado con éxito!\n");
+            System.out.println(columna.substring(0, 1).toUpperCase() + columna.substring(1) + " actualizado con exito!\n");
             
-        } catch (SQLException e) {
-            System.out.println("Error al actualizar el motivo: " + e.getMessage());
+        }catch (SQLException e){
+            System.out.println("Error al actualizar el " + columna + ": " + e.getMessage());
         }
     }
     
     /**
      * Actualiza la fecha y los horarios de inicio/fin del turno en la base de datos.
      */
-    private void modificarFechaYHoraEnBD(int turnoId, LocalDate nuevaFecha, LocalTime nuevoInicio, LocalTime nuevoFin) {
+    private void actualizarFechaYHoraEnBD(int turnoId) {
         String sql = "UPDATE Turno SET fecha = ?, horario_inicio = ?, horario_fin = ? WHERE id = ?";
         
         try(Connection con = conexionDB.getConnection();
             PreparedStatement pstmt = con.prepareStatement(sql)){
             
-            pstmt.setObject(1, nuevaFecha);
-            pstmt.setObject(2, nuevoInicio);
-            pstmt.setObject(3, nuevoFin);
+            pstmt.setObject(1, t.getFecha());
+            pstmt.setObject(2, t.getHorarioInicio());
+            pstmt.setObject(3, t.getHorarioFin());
             pstmt.setInt(4, turnoId);
             
             pstmt.executeUpdate();
-            System.out.println("¡Fecha y horario actualizados con éxito!\n");
+            System.out.println("Fecha y horario modificados con exito.\n");
             
-        } catch (SQLException e) {
+        }catch (SQLException e){
             System.out.println("Error al actualizar la fecha y horario: " + e.getMessage());
         }
     }
     
     /**
-     * Verifica superposiciones de turnos excluyendo al turno que estamos modificando.
+     * Método unificado (Principio DRY) para verificar superposiciones excluyendo ID.
      */
-    private boolean existeSuperposicionTurnoExcluyendo(LocalDate fecha, LocalTime inicio, LocalTime fin, int turnoIdExcluir) {
-        String sql = "SELECT f_verificar_superposicion_turno_excluyendo(?, ?, ?, ?)";
-    
-        try (Connection con = conexionDB.getConnection();
-             PreparedStatement pstmt = con.prepareStatement(sql)) {
+    private boolean verificarSuperposicionExcluyendoBD(String sql, LocalDate fecha, LocalTime inicio, LocalTime fin, int turnoIdExcluir) {
+        try(Connection con = conexionDB.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)){
         
             pstmt.setObject(1, fecha);
             pstmt.setObject(2, inicio);
             pstmt.setObject(3, fin);
             pstmt.setInt(4, turnoIdExcluir);
         
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
+            try(ResultSet rs = pstmt.executeQuery()){
+                if(rs.next()){
                     return rs.getBoolean(1);
                 }
             }
             return true;
-        } catch (SQLException e) {
+        }catch(SQLException e){
             System.out.println("Error al verificar superposición: " + e.getMessage());
             return true;
         }

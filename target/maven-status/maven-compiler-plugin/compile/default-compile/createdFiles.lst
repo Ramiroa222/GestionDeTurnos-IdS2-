@@ -1,7 +1,10 @@
+Controladores\ControladorPacientes.class
 Controladores\ControladorBase.class
 Controladores\ControladorTurnos.class
 Controladores\GestionDeTurnos.class
 Modelos\Turno.class
+Servicios\ActualizadorDeTurnosService.class
 Vistas\Vista.class
+Controladores\ControladorCancelacion.class
 Modelos\Paciente.class
 Servicios\Conexion.class

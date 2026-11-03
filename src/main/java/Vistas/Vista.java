@@ -43,6 +43,10 @@ public class Vista {
         do{
             System.out.print(mensaje);
             entrada = in.nextLine().trim(); // Se eliminan espacios al principio y final.
+            
+            if(entrada.isEmpty()){
+                System.out.println("[Alerta] No Puede Estar Vacio.");
+            }
         }while(entrada.isEmpty());
         
         return entrada;
@@ -71,10 +75,10 @@ public class Vista {
                 if(dniStr.matches("\\d{7,9}")){
                     return dniStr;
                 }else{
-                    System.out.println("DNI inválido. Debe contener entre 7 y 9 dígitos numéricos.");
+                    System.out.println("DNI invalido. Debe contener entre 7 y 9 digitos numericos.");
                 }
             }catch(Exception e){
-                System.out.println("Entrada inválida. Intente nuevamente.");
+                System.out.println("Entrada invalida. Intente nuevamente.");
             }
         }
     }
@@ -102,10 +106,10 @@ public class Vista {
                 if(telefonoStr.matches("^[+]?[0-9\\s\\-\\(\\)]+$") && soloDigitos.length() >= 7 && soloDigitos.length() <= 15){
                     return telefonoStr;
                 }else{
-                    System.out.println("Teléfono inválido. Use un formato válido (ej. 11 1234-5678 o +54 9 ...).");
+                    System.out.println("Telefono invalido. Use un formato valido (ej. 11 1234-5678 o +54 9 ...).");
                 }
             }catch(Exception e){
-                System.out.println("Entrada inválida. Intente nuevamente.");
+                System.out.println("Entrada invalida. Intente nuevamente.");
             }
         }
     }
@@ -128,13 +132,13 @@ public class Vista {
                 
                 // Validación: Debe ser de Lunes a Viernes.
                 if(fecha.getDayOfWeek() == DayOfWeek.SATURDAY || fecha.getDayOfWeek() == DayOfWeek.SUNDAY){
-                    System.out.println("Día inválido. Los turnos solo se otorgan de Lunes a Viernes. Intente nuevamente.");
+                    System.out.println("Dia invalido. Los turnos solo se otorgan de Lunes a Viernes. Intente nuevamente.");
                     continue;
                 }
                 
                 return fecha;
             }catch(Exception e){
-                System.out.println("Formato inválido. Use el formato dd/MM/aaaa (ej. 15/10/1990).");
+                System.out.println("Formato invalido. Use el formato dd/MM/aaaa (ej. 15/10/1990).");
             }
         }
     }
@@ -159,13 +163,13 @@ public class Vista {
                 
                 // Validación: El horario debe estar entre las 08:00 y las 19:20 hs.
                 if(horarioInicio.isBefore(horaMinima) || horarioInicio.isAfter(horaMaxima)){
-                    System.out.println("Horario inválido. Debe estar comprendido entre las 08:00 y las 19:20 hs.");
+                    System.out.println("Horario invalido. Debe estar comprendido entre las 08:00 y las 19:20 hs.");
                     continue;
                 }
                 
                 return horarioInicio;
             }catch(Exception e){
-                System.out.println("Formato inválido. Use el formato HH:mm (ej. 14:30).");
+                System.out.println("Formato invalido. Use el formato HH:mm (ej. 14:30).");
             }
         }
     }    
@@ -201,17 +205,6 @@ public class Vista {
     public String menuDeConsultas() {
         return """
                
-               ================ CANCELACIÓN DE TURNOS ================
-               Seleccione Una Opcion Para Continuar:
-               [0] Volver Al Menu Principal.
-               [1] Cancelar Un Turno Registrado.
-               =======================================================
-               """;
-    }
-    
-    public String menuDeCancelacionDeTurnos() {
-        return """
-               
                =================== CONSULTAS ===================
                Seleccione Una Opcion Para Continuar:
                [0] Volver Al Menu Principal.
@@ -220,6 +213,17 @@ public class Vista {
                [3] Consultar Turnos De Un Paciente.
                [4] Consultar Historial Completo De Turnos.
                =================================================
+               """;
+    }
+    
+    public String menuDeCancelacionDeTurnos() {
+        return """
+               
+               ================ CANCELACION DE TURNOS ================
+               Seleccione Una Opcion Para Continuar:
+               [0] Volver Al Menu Principal.
+               [1] Cancelar Un Turno Registrado.
+               =======================================================
                """;
     }
 }
