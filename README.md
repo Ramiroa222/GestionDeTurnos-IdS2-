@@ -40,6 +40,23 @@ Aplicación de consola escrita en Java para administrar pacientes y turnos de un
 
    La configuración se guarda en `db.properties` en el directorio desde donde se ejecuta la aplicación. En las siguientes ejecuciones, responde `No` para conservarla o `Si` para cambiarla. Mantén este archivo privado y no compartas sus credenciales.
 
+## Ejecutar en Windows con `ejecutar.bat`
+
+El archivo [`ejecutar.bat`](ejecutar.bat) automatiza el inicio del programa en Windows: cambia el directorio de trabajo a la ubicación del propio archivo, ejecuta `mvn clean package` para compilar el proyecto y, si la compilación termina correctamente, inicia la aplicación con `mvn exec:java`. Si falla la compilación, muestra un aviso y no intenta iniciar el programa.
+
+Para usarlo:
+
+1. Asegúrate de tener instalados y configurados Java JDK 23 o superior y Maven, y de que MySQL esté iniciado.
+2. Descarga o clona el repositorio y, si lo descargaste como ZIP, descomprímelo.
+3. En el Explorador de archivos, abre la carpeta del proyecto que contiene `pom.xml` y `ejecutar.bat`, y haz doble clic en `ejecutar.bat`.
+4. También puedes abrir CMD, cambiar a esa carpeta y ejecutarlo:
+
+   ```bat
+   ejecutar.bat
+   ```
+
+La ventana de consola permanecerá abierta al terminar para que puedas revisar los mensajes. Si modificas el código fuente, no hace falta crear otro `.bat`: vuelve a ejecutar el mismo archivo y este recompilará antes de iniciar la aplicación. La primera vez, introduce los datos de conexión a MySQL cuando los solicite.
+
 ## Uso
 
 La aplicación se maneja mediante menús en la terminal. Escribe el número de la opción deseada y presiona **Enter**:
@@ -57,6 +74,7 @@ Al registrar datos, sigue el formato que solicita la consola. La aplicación val
 - **No se puede conectar a MySQL:** verifica que el servidor esté activo, que la URL incluya el puerto correcto, que exista `Gestion_De_Turnos_BD` y que el usuario y la contraseña sean válidos. Puedes elegir `Si` al inicio para volver a configurar la conexión.
 - **No encuentra la base de datos o sus objetos:** confirma que ejecutaste el script de inicialización revisado y que se crearon las tablas, procedimientos, funciones y vistas.
 - **Error de compilación por versión de Java:** comprueba que Maven esté usando JDK 23 o superior (`java -version` y `mvn -version`).
+- **`mvn` no se reconoce al ejecutar `ejecutar.bat`:** instala Maven y agrega su directorio `bin` a la variable `PATH`, o ejecuta el proyecto desde una terminal donde Maven esté configurado.
 
 ## Tecnologías
 
