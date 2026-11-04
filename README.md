@@ -89,18 +89,6 @@ Aplicación de consola escrita en Java para administrar pacientes y turnos de un
 
    La configuración se guarda en `db.properties` en el directorio desde donde se ejecuta la aplicación. En las siguientes ejecuciones, responde `No` para conservarla o `Si` para cambiarla. Mantén este archivo privado y no compartas sus credenciales.
 
-## Ejecutar en Windows con `ejecutar.bat`
-
-El archivo [`ejecutar.bat`](ejecutar.bat) automatiza el inicio del programa en Windows: cambia el directorio de trabajo a la ubicación del propio archivo, ejecuta `mvn clean package` para compilar el proyecto y, si la compilación termina correctamente, inicia la aplicación con `mvn exec:java`. Si falla la compilación, muestra un aviso y no intenta iniciar el programa.
-
-Para usarlo, asegúrate de tener Java, Maven y MySQL instalados y configurados, y luego haz doble clic en `ejecutar.bat` desde la carpeta del proyecto (la misma que contiene `pom.xml`). También puedes abrir CMD en esa carpeta y ejecutar:
-
-```bat
-ejecutar.bat
-```
-
-La ventana de consola permanecerá abierta al terminar para que puedas revisar los mensajes. Si modificas el código fuente, no hace falta crear otro `.bat`: vuelve a ejecutar el mismo archivo y este recompilará antes de iniciar la aplicación. La primera vez, introduce los datos de conexión a MySQL cuando los solicite.
-
 ## Uso
 
 La aplicación se maneja mediante menús en la terminal. Escribe el número de la opción deseada y presiona **Enter**:
