@@ -62,7 +62,7 @@ public class ControladorBase {
                 case 2 -> c2.iniciar(in); // Delega la ejecución al subcontrolador de Consultas.
                 case 3 -> c3.iniciar(in); // Delega la ejecución al subcontrolador de Cancelación de Turnos.
                 case 4 -> reportePdfService.generarPdfTurnosDelDia(); // Genera directamente el reporte PDF de los turnos del día actual
-                default -> System.out.println("Opcion Invalida. Ingrese Un Numero Entero Entre 0 y 5.");
+                default -> System.out.println("Opcion Invalida. Ingrese Un Numero Entero Entre 0 y 4.");
             }
         }while(opcion != 0);
         

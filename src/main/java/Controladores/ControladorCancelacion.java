@@ -76,7 +76,7 @@ public class ControladorCancelacion {
         List<Turno> turnosPendientes = obtenerTurnosPendientesPorDni(dni);
         
         if (turnosPendientes.isEmpty()) {
-            System.out.println("\n[AVISO] No existe ningún turno pendiente asociado al DNI ingresado.");
+            System.out.println("\n[AVISO] No existe ningun turno pendiente asociado al DNI ingresado.");
             return;
         }
         
@@ -92,7 +92,7 @@ public class ControladorCancelacion {
         long horasDeAnticipacion = ChronoUnit.HOURS.between(ahora, turnoDateTime);
         
         if(horasDeAnticipacion < 24 || turnoDateTime.isBefore(ahora)){
-            System.out.println("\n[ERROR] No es posible realizar la cancelación con menos de 24 hs de anticipación.");
+            System.out.println("\n[ERROR] No es posible realizar la cancelacion con menos de 24 hs de anticipacion.");
             return;
         }
         
@@ -114,7 +114,6 @@ public class ControladorCancelacion {
      */
     private Turno seleccionarTurnoACancelar(Scanner in, List<Turno> turnosPendientes) {
         if(turnosPendientes.size() == 1){
-            System.out.println("Turno único encontrado para este paciente.");
             return turnosPendientes.get(0);
         }
         
@@ -134,7 +133,7 @@ public class ControladorCancelacion {
             }
         }
         
-        System.out.println("\n[ERROR] No se encontró ningún turno pendiente con esa fecha y horario para el DNI ingresado.");
+        System.out.println("\n[ERROR] No se encontro ningun turno pendiente con esa fecha y horario para el DNI ingresado.");
         System.out.println("Caso de uso finalizado.\n");
         return null;
     }
