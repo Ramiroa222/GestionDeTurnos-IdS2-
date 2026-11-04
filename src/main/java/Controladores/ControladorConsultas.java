@@ -52,14 +52,12 @@ public class ControladorConsultas {
             
             switch(opcion){
                 case 0 -> {
-                    System.out.println("\nSaliendo Del Programa...");
-                    try {
-                        Thread.sleep(1500);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                    System.out.println("\nVolviendo Al Menu Principal...");
+                    try{
+                        Thread.sleep(700);   // Pausa la ejecución del programa por 700 milisegundos.
+                    }catch (InterruptedException e){
+                        Thread.currentThread().interrupt();   // Restaura la interrupción del hilo en caso de error.
                     }
-                    System.out.println("Hasta Pronto!");
-                    System.exit(0);
                 }
                 case 1 -> consultarAgenda(in);
                 case 2 -> consultarTurnosPendientes(in);
