@@ -42,16 +42,22 @@ Aplicación de consola escrita en Java para administrar pacientes y turnos de un
    Cambia `root` por tu usuario de MySQL si corresponde. Escribe la contraseña cuando la solicite. 
 
 3. **Inicia la aplicación:**
-   **Opcion A**
+
+   **Opcion A:**
+   
    En CMD entra al directorio del proyecto:
+   
    ```bash
    cd rutaHaciaElDirectorio\GestionDeTurnos-IdS2--main\ejecutable
    ```
    Luego:
+   
    ```bash
    java -jar "%~dp0GestionDeTurnos-1.0-SNAPSHOT.jar"
    ```
-   **Opcion B**
+   
+   **Opcion B:**
+   
    Ejecutar el archivo Sistema De Gestion De Turnos.bat (Esta en la carpeta ejecutable).
    
 4. **Configura la conexión a MySQL en el primer inicio.** La aplicación solicitará:
