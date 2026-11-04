@@ -17,23 +17,72 @@ Aplicación de consola escrita en Java para administrar pacientes y turnos de un
    cd GestionDeTurnos-IdS2-
    ```
 
-2. **Prepara la base de datos.** El archivo [`BaseDeDatos.sql`](BaseDeDatos.sql) contiene el esquema y los procedimientos, funciones y vistas que utiliza el sistema. Antes de ejecutarlo, revisa el script: incluye sentencias `DROP DATABASE`, `DROP TABLE`, `DROP PROCEDURE`, `DROP FUNCTION` y `DROP VIEW`, que pueden eliminar datos u objetos existentes. En una instalación nueva, comenta o elimina esas sentencias de borrado y ejecuta el resto del script en MySQL Workbench o desde el cliente de MySQL. La base de datos esperada por la aplicación se llama `Gestion_De_Turnos_BD`.
+2. **Instala y configura Maven en Windows:**
 
-   **No ejecutes el script sin revisarlo** si la base de datos contiene información que quieras conservar.
+   1. Descarga el archivo **Binary zip archive** desde la [página oficial de descargas de Maven](https://maven.apache.org/download.cgi). No descargues el archivo *Source archive*.
+   2. Crea una carpeta para Maven, por ejemplo `C:\herramientas`, y extrae el ZIP allí. Deberías obtener una carpeta con un nombre parecido a `C:\herramientas\apache-maven-3.x.x`.
+   3. Abre esa carpeta y comprueba que dentro exista `bin`; la ruta completa será parecida a `C:\herramientas\apache-maven-3.x.x\bin`. Usa la ruta real de la versión que descargaste.
+   4. Agrega esa ruta al `PATH` de Windows:
+      - Busca en Inicio **Editar las variables de entorno del sistema** y abre esa opción.
+      - Pulsa **Variables de entorno...**.
+      - En **Variables del sistema**, selecciona `Path` y pulsa **Editar**. Si no tienes permisos de administrador, puedes editar el `Path` de usuario.
+      - Pulsa **Nuevo**, pega la ruta completa a la carpeta `bin` de Maven y acepta todas las ventanas.
+      - No reemplaces ni borres las entradas existentes del `Path`.
+   5. Cierra las ventanas de CMD o PowerShell que ya estuvieran abiertas y abre una nueva. Comprueba la instalación con:
 
-3. **Compila el proyecto** desde la raíz:
+      ```bat
+      mvn -version
+      ```
 
-   ```bash
+      Debe mostrarse la versión de Apache Maven y la versión de Java. Si Windows indica que `mvn` no se reconoce, revisa que agregaste al `Path` la carpeta `bin` correcta y que abriste una terminal nueva.
+
+   Maven necesita un JDK disponible. Verifica también:
+
+   ```bat
+   java -version
+   mvn -version
+   ```
+
+   Ambos comandos deben funcionar y Maven debe detectar JDK 23 o superior. Si `java` no se reconoce o Maven muestra otra versión, instala/configura el JDK y vuelve a abrir la terminal antes de continuar.
+
+3. **Crea y prepara la base de datos MySQL:**
+
+   El archivo [`BaseDeDatos.sql`](BaseDeDatos.sql) crea la base `Gestion_De_Turnos_BD`, las tablas `Paciente`, `Turno` e `HistorialDeTurnosPendientes`, además de los procedimientos almacenados, funciones y vistas que usa la aplicación.
+
+   > **Advertencia:** el script contiene sentencias `DROP` que pueden eliminar la base de datos, tablas y objetos. Antes de ejecutarlo, haz una copia de seguridad si ya tienes información y comenta o elimina todas las sentencias `DROP` del archivo, incluidas las secciones para borrar la base de datos, tablas, procedimientos, funciones y vistas. Si dejas los `DROP` de procedimientos, funciones o vistas al final, esos objetos se crearán y luego se borrarán, y el programa no podrá utilizarlos.
+
+   **Opción A: MySQL Workbench**
+
+   1. Inicia el servidor MySQL y abre MySQL Workbench.
+   2. Conéctate al servidor con un usuario que tenga permisos para crear bases de datos, tablas, rutinas y vistas.
+   3. Abre `BaseDeDatos.sql` desde **File > Open SQL Script**.
+   4. Revisa el archivo y comenta/elimina las sentencias `DROP` indicadas arriba. En Workbench puedes anteponer `-- ` a cada sentencia para comentarla.
+   5. Ejecuta el script completo con el botón del rayo (**Execute**) o con **Ctrl+Shift+Enter**.
+   6. En el panel **SCHEMAS**, actualiza la lista y confirma que exista `Gestion_De_Turnos_BD` con las tablas, vistas, funciones y procedimientos definidos en el script.
+
+   **Opción B: consola de MySQL**
+
+   Después de revisar y guardar los cambios en el script, abre CMD en la carpeta donde está `BaseDeDatos.sql` y ejecuta:
+
+   ```bat
+   mysql -u root -p < BaseDeDatos.sql
+   ```
+
+   Cambia `root` por tu usuario de MySQL si corresponde. Escribe la contraseña cuando la solicite. También puedes importar el archivo desde otra herramienta cliente de MySQL.
+
+4. **Compila el proyecto** desde la raíz, en la carpeta que contiene `pom.xml`:
+
+   ```bat
    mvn clean package
    ```
 
-4. **Inicia la aplicación:**
+5. **Inicia la aplicación:**
 
-   ```bash
+   ```bat
    mvn exec:java
    ```
 
-5. **Configura la conexión a MySQL en el primer inicio.** La aplicación solicitará:
+6. **Configura la conexión a MySQL en el primer inicio.** La aplicación solicitará:
    - URL JDBC, por ejemplo: `jdbc:mysql://localhost:3306/Gestion_De_Turnos_BD`
    - Usuario de MySQL, por ejemplo: `root`
    - Contraseña del usuario
@@ -44,16 +93,11 @@ Aplicación de consola escrita en Java para administrar pacientes y turnos de un
 
 El archivo [`ejecutar.bat`](ejecutar.bat) automatiza el inicio del programa en Windows: cambia el directorio de trabajo a la ubicación del propio archivo, ejecuta `mvn clean package` para compilar el proyecto y, si la compilación termina correctamente, inicia la aplicación con `mvn exec:java`. Si falla la compilación, muestra un aviso y no intenta iniciar el programa.
 
-Para usarlo:
+Para usarlo, asegúrate de tener Java, Maven y MySQL instalados y configurados, y luego haz doble clic en `ejecutar.bat` desde la carpeta del proyecto (la misma que contiene `pom.xml`). También puedes abrir CMD en esa carpeta y ejecutar:
 
-1. Asegúrate de tener instalados y configurados Java JDK 23 o superior y Maven, y de que MySQL esté iniciado.
-2. Descarga o clona el repositorio y, si lo descargaste como ZIP, descomprímelo.
-3. En el Explorador de archivos, abre la carpeta del proyecto que contiene `pom.xml` y `ejecutar.bat`, y haz doble clic en `ejecutar.bat`.
-4. También puedes abrir CMD, cambiar a esa carpeta y ejecutarlo:
-
-   ```bat
-   ejecutar.bat
-   ```
+```bat
+ejecutar.bat
+```
 
 La ventana de consola permanecerá abierta al terminar para que puedas revisar los mensajes. Si modificas el código fuente, no hace falta crear otro `.bat`: vuelve a ejecutar el mismo archivo y este recompilará antes de iniciar la aplicación. La primera vez, introduce los datos de conexión a MySQL cuando los solicite.
 
@@ -71,10 +115,10 @@ Al registrar datos, sigue el formato que solicita la consola. La aplicación val
 
 ## Solución de problemas
 
+- **`mvn` no se reconoce:** confirma que agregaste al `Path` la ruta a la carpeta `bin` de Maven, abre una terminal nueva y verifica con `mvn -version`.
 - **No se puede conectar a MySQL:** verifica que el servidor esté activo, que la URL incluya el puerto correcto, que exista `Gestion_De_Turnos_BD` y que el usuario y la contraseña sean válidos. Puedes elegir `Si` al inicio para volver a configurar la conexión.
 - **No encuentra la base de datos o sus objetos:** confirma que ejecutaste el script de inicialización revisado y que se crearon las tablas, procedimientos, funciones y vistas.
 - **Error de compilación por versión de Java:** comprueba que Maven esté usando JDK 23 o superior (`java -version` y `mvn -version`).
-- **`mvn` no se reconoce al ejecutar `ejecutar.bat`:** instala Maven y agrega su directorio `bin` a la variable `PATH`, o ejecuta el proyecto desde una terminal donde Maven esté configurado.
 
 ## Tecnologías
 
